@@ -13,7 +13,7 @@ from external.email_sender import send_client_email
 
 def render_upload_page():
     st.title("Vera")
-    st.write("Manda una revisión. Recibe un trail firmado.")
+    st.write("Comparte una versión. Cierra con claridad.")
 
     st.session_state.setdefault("last_approval_link", None)
     st.session_state.setdefault("last_project_name", None)
@@ -41,7 +41,7 @@ def render_upload_page():
             else:
                 st.success(f"Imagen lista: {uploaded_file.name} · {size_mb:.1f}MB")
 
-        submitted = st.form_submit_button("Send")
+        submitted = st.form_submit_button("Generar link de aprobación")
 
     if submitted:
         try:
@@ -82,7 +82,7 @@ def render_upload_page():
             st.caption(str(error))
 
     if st.session_state.last_approval_link:
-        st.success("Proyecto creado. Link de aprobación listo.")
+        st.success("Todo listo. Comparte este enlace con tu cliente.")
 
         st.markdown("### Link privado")
         st.code(st.session_state.last_approval_link)
@@ -97,7 +97,4 @@ def render_upload_page():
         if email_status and email_status.get("sent"):
             st.info("Email preparado correctamente.")
         else:
-            st.info(
-                "No se envió email porque el campo estaba vacío. "
-                "Puedes copiar el link manualmente."
-            )
+            st.info("Puedes copiar el enlace y enviarlo cuando quieras.")
