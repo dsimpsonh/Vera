@@ -20,26 +20,17 @@ st.set_page_config(
     layout="wide",
 )
 
-# Paths
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 CERT_DIR = DATA_DIR / "certificates"
 DB_PATH = DATA_DIR / "vera.db"
+LOGO_PATH = BASE_DIR / "vera_logo.png"
 
 MAX_FILE_MB = 10
 
 for path in [DATA_DIR, UPLOAD_DIR, CERT_DIR]:
     path.mkdir(parents=True, exist_ok=True)
-
-# Logo (DESPUÉS de set_page_config)
-LOGO_PATH = BASE_DIR / "vera_logo.png"
-
-if LOGO_PATH.exists():
-    st.image(str(LOGO_PATH), width=60)
-
-
-
 
 
 # -----------------------------
@@ -56,19 +47,16 @@ html, body, [class*="css"] {
     color: #1A1A1A;
 }
 
-/* Titles */
 h1, h2, h3 {
     font-family: 'Playfair Display', serif;
     letter-spacing: -0.5px;
 }
 
-/* Inputs */
 input, textarea {
     border: 1px solid #D9D6CF !important;
     background: #FFFFFF !important;
 }
 
-/* Buttons */
 div.stButton > button {
     border: 1px solid #1A1A1A;
     background: transparent;
@@ -82,7 +70,6 @@ div.stButton > button:hover {
     color: #FFFFFF;
 }
 
-/* Accent button (approval) */
 button[kind="primary"] {
     border: none !important;
     background-color: #E86C5D !important;
@@ -93,17 +80,53 @@ button[kind="primary"]:hover {
     background-color: #d85c4e !important;
 }
 
-/* Cards */
 .block-container {
-    max-width: 900px;
+    max-width: 980px;
 }
 
-/* Success */
+.vera-card {
+    background: #FFFFFF;
+    border: 1px solid #D9D6CF;
+    padding: 28px;
+    margin: 18px 0;
+}
+
+.client-frame {
+    background: #FFFFFF;
+    border: 1px solid #D9D6CF;
+    padding: 28px;
+    margin-top: 20px;
+}
+
+.meta-line {
+    color: #6E6A63;
+    font-size: 14px;
+}
+
+.seal {
+    border: 2px solid #1A1A1A;
+    background: #FFFFFF;
+    padding: 28px;
+    text-align: center;
+    margin-top: 24px;
+}
+
+.seal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    letter-spacing: 0.12em;
+}
+
 .stSuccess {
     border-left: 3px solid #2F7A65;
 }
 </style>
 """, unsafe_allow_html=True)
+
+
+def render_logo():
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=72)
 
 
 # -----------------------------
@@ -116,8 +139,7 @@ def db():
 
 def init_db():
     with db() as conn:
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 project_name TEXT NOT NULL,
@@ -125,11 +147,9 @@ def init_db():
                 client_email TEXT,
                 created_at TEXT NOT NULL
             )
-            """
-        )
+        """)
 
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS versions (
                 id TEXT PRIMARY KEY,
                 project_id TEXT NOT NULL,
@@ -139,11 +159,9 @@ def init_db():
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(project_id) REFERENCES projects(id)
             )
-            """
-        )
+        """)
 
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS approvals (
                 id TEXT PRIMARY KEY,
                 project_id TEXT NOT NULL,
@@ -154,8 +172,7 @@ def init_db():
                 FOREIGN KEY(project_id) REFERENCES projects(id),
                 FOREIGN KEY(version_id) REFERENCES versions(id)
             )
-            """
-        )
+        """)
 
 
 init_db()
@@ -215,11 +232,11 @@ def make_hash(project_id, version_id, approved_at):
 
 
 def base_url():
-    return st.query_params.get("base_url", "http://localhost:8501")
+    return st.secrets.get("APP_BASE_URL", "http://localhost:8501")
 
 
 def build_link(project_id):
-    return f"{base_url()}?project_id={project_id}"
+    return f"{base_url()}/?project_id={project_id}"
 
 
 # -----------------------------
@@ -230,7 +247,6 @@ def create_project(project_name, client_name, client_email, uploaded_file, note)
     project_id = new_id("project")
     version_id = new_id("version")
     created_at = now()
-
     image_path = save_image(uploaded_file, project_id, version_id)
 
     with db() as conn:
@@ -317,8 +333,7 @@ def list_projects():
     with db() as conn:
         conn.row_factory = sqlite3.Row
 
-        rows = conn.execute(
-            """
+        rows = conn.execute("""
             SELECT p.*,
                    COUNT(v.id) AS version_count,
                    MAX(v.created_at) AS last_updated
@@ -326,8 +341,7 @@ def list_projects():
             LEFT JOIN versions v ON p.id = v.project_id
             GROUP BY p.id
             ORDER BY p.created_at DESC
-            """
-        ).fetchall()
+        """).fetchall()
 
     return [dict(row) for row in rows]
 
@@ -407,8 +421,9 @@ def approve_latest(project, version):
 # -----------------------------
 
 def render_studio():
-    st.title("Vera — approval tracker")
-    st.write("Manda una revisión. Recibe un trail firmado.")
+    render_logo()
+    st.title("Vera")
+    st.caption("Comparte una versión. Cierra con claridad.")
 
     tab_create, tab_history = st.tabs(["Nuevo envío", "Historial"])
 
@@ -437,7 +452,6 @@ def render_studio():
             try:
                 if not project_name.strip():
                     raise ValueError("Añade el nombre del proyecto.")
-
                 if not client_name.strip():
                     raise ValueError("Añade el nombre del cliente.")
 
@@ -455,9 +469,9 @@ def render_studio():
 
                 link = build_link(project_id)
 
-                st.success("Proyecto creado. Link privado listo.")
+                st.success("Todo listo. Comparte este enlace con tu cliente.")
                 st.code(link)
-                st.link_button("Abrir vista cliente", link)
+                st.link_button("Simular vista cliente", link)
 
             except ValueError as error:
                 st.warning(str(error))
@@ -477,6 +491,11 @@ def render_studio():
                 st.write(f"Creado: {project['created_at']}")
                 st.write(f"Versiones: {project['version_count']}")
                 st.code(build_link(project["id"]))
+                st.link_button(
+                    "Ver como cliente",
+                    build_link(project["id"]),
+                    key=f"client_view_{project['id']}",
+                )
 
                 with st.form(f"version_form_{project['id']}", clear_on_submit=True):
                     version_note = st.text_area("Nota para nueva versión")
@@ -499,33 +518,57 @@ def render_studio():
 
 
 def render_client(project_id):
+    render_logo()
+
     data = get_project(project_id)
 
     if data is None:
-        st.error("Proyecto no encontrado.")
+        st.error("Este link no corresponde a ningún proyecto disponible.")
+        st.info("Para esta demo, crea primero un proyecto desde la vista de Sofía.")
         return
 
     project = data["project"]
     versions = data["versions"]
     approval = data["approval"]
+
+    if not versions:
+        st.error("Este proyecto no tiene ninguna versión para revisar.")
+        return
+
     latest_version = versions[0]
 
-    st.title("Vera")
-    st.write("Revisión privada para aprobación.")
+    st.title("Revisión privada")
+    st.caption("Vera · Approval tracker")
 
-    st.markdown('<div class="vera-card">', unsafe_allow_html=True)
-    st.subheader(project["project_name"])
-    st.write(f"Cliente: {project['client_name']}")
-    st.write(f"Versión actual: V{latest_version['version_number']}")
+    st.markdown('<div class="client-frame">', unsafe_allow_html=True)
 
-    if latest_version["note"]:
-        st.write(f"Nota: {latest_version['note']}")
+    left, right = st.columns([1.2, 2])
 
-    st.image(latest_version["image_path"], use_container_width=True)
+    with left:
+        st.markdown("### Detalles")
+        st.write(f"**Proyecto:** {project['project_name']}")
+        st.write(f"**Cliente:** {project['client_name']}")
+        st.write(f"**Versión:** V{latest_version['version_number']}")
+        st.markdown(
+            f"<p class='meta-line'>Creado: {project['created_at']}</p>",
+            unsafe_allow_html=True,
+        )
+
+        if latest_version.get("note"):
+            st.markdown("### Nota de la ilustradora")
+            st.write(latest_version["note"])
+
+    with right:
+        image_path = latest_version.get("image_path")
+        if image_path and Path(image_path).exists():
+            st.image(image_path, use_container_width=True)
+        else:
+            st.warning("No se encontró la imagen de esta versión.")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
     if approval:
-        st.success("Este proyecto ya tiene una aprobación registrada.")
+        st.success("Esta versión ya fue aprobada.")
 
         st.markdown(
             f"""
@@ -538,8 +581,10 @@ def render_client(project_id):
             unsafe_allow_html=True,
         )
 
-        if Path(approval["certificate_path"]).exists():
-            with open(approval["certificate_path"], "rb") as pdf:
+        certificate_path = approval.get("certificate_path")
+
+        if certificate_path and Path(certificate_path).exists():
+            with open(certificate_path, "rb") as pdf:
                 st.download_button(
                     "Descargar certificado PDF",
                     data=pdf,
@@ -548,12 +593,12 @@ def render_client(project_id):
                 )
         return
 
-    st.warning("Aprueba solo si esta versión está lista para cerrar.")
+    st.info("Revisa la imagen. Si todo está correcto, puedes aprobar esta versión.")
 
-    confirmed = st.checkbox("Confirmo que apruebo esta versión.")
+    confirmed = st.checkbox("He revisado esta versión y está lista para aprobar.")
 
     if confirmed:
-        if st.button("SELLAR Y APROBAR VERSIÓN", use_container_width=True):
+        if st.button("Aprobar esta versión", type="primary", use_container_width=True):
             with st.spinner("Sellando aprobación y generando certificado..."):
                 approval_result = approve_latest(project, latest_version)
 
