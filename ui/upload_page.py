@@ -6,8 +6,7 @@ def render_upload_page():
     st.title("Vera")
     st.write("Manda una revisión. Recibe un trail firmado.")
 
-    if "last_approval_link" not in st.session_state:
-        st.session_state.last_approval_link = None
+    st.session_state.setdefault("last_approval_link", None)
 
     with st.form("upload_form", clear_on_submit=False):
         project_name = st.text_input("Nombre del proyecto")
@@ -17,7 +16,7 @@ def render_upload_page():
         uploaded_file = st.file_uploader(
             "Sube la ilustración",
             type=["png", "jpg", "jpeg", "webp"],
-            help=f"Máximo {MAX_FILE_MB}MB"
+            help=f"Máximo {MAX_FILE_MB}MB",
         )
 
         if uploaded_file:
@@ -52,8 +51,9 @@ def render_upload_page():
 
         except ValueError as e:
             st.warning(str(e))
-        except Exception:
-            st.error("Vera no pudo completar la acción. Revisa los datos e inténtalo de nuevo.")
+        except Exception as e:
+            st.error("Vera no pudo completar la acción.")
+            st.caption(str(e))
 
     if st.session_state.last_approval_link:
         st.success("Proyecto creado. Link de aprobación listo.")
