@@ -1,100 +1,98 @@
+from pathlib import Path
+
 import streamlit as st
 
-from logic.validators import (
-    MAX_FILE_MB,
-    clean_optional_email,
-    get_file_size_mb,
-    validate_image_file,
-)
-
-from logic.approvals import create_project, build_approval_link
-from external.email_sender import send_client_email
+from logic.approvals import get_project, approve_project
 
 
-def render_upload_page():
+def render_approval_page(project_id: str):
     st.title("Vera")
-    st.write("Comparte una versión. Cierra con claridad.")
+    st.caption("Vista privada de aprobación")
 
-    st.session_state.setdefault("last_approval_link", None)
-    st.session_state.setdefault("last_project_name", None)
-    st.session_state.setdefault("last_email_status", None)
+    if not project_id:
+        st.error("No se encontró el proyecto.")
+        return
 
-    with st.form("upload_form", clear_on_submit=False):
-        project_name = st.text_input("Nombre del proyecto")
-        client_name = st.text_input("Nombre del cliente")
-        client_email = st.text_input("Email del cliente opcional")
+    data = get_project(project_id)
 
-        uploaded_file = st.file_uploader(
-            "Sube la ilustración",
-            type=["png", "jpg", "jpeg", "webp"],
-            help=f"Máximo {MAX_FILE_MB}MB",
-        )
+    if not data:
+        st.error("Este link no corresponde a ningún proyecto disponible.")
+        st.info("Para esta demo, primero crea el proyecto desde la vista de Sofía.")
+        return
 
-        if uploaded_file:
-            size_mb = get_file_size_mb(uploaded_file)
+    project = data["project"]
+    versions = data["versions"]
+    approval = data.get("approval")
 
-            if size_mb > MAX_FILE_MB:
-                st.error(
-                    f"Archivo demasiado grande: {size_mb:.1f}MB. "
-                    f"Máximo permitido: {MAX_FILE_MB}MB."
+    if not versions:
+        st.error("Este proyecto no tiene imagen asociada.")
+        return
+
+    latest_version = versions[0]
+
+    st.markdown("---")
+
+    st.subheader(project["project_name"])
+    st.write(f"Cliente: {project['client_name']}")
+    st.write(f"Versión: V{latest_version.get('version_number', 1)}")
+
+    image_path = latest_version.get("image_path")
+
+    if image_path and Path(image_path).exists():
+        st.image(image_path, use_container_width=True)
+    else:
+        st.warning("No se encontró la imagen de esta versión.")
+
+    st.markdown("---")
+
+    if approval:
+        st.success("Esta versión ya fue aprobada.")
+
+        st.markdown("### Sello digital")
+        st.code(approval.get("approval_hash"))
+
+        st.write(f"Aprobado el: {approval.get('approved_at')}")
+
+        pdf_path = approval.get("pdf_path") or approval.get("certificate_path")
+
+        if pdf_path and Path(pdf_path).exists():
+            with open(pdf_path, "rb") as pdf:
+                st.download_button(
+                    "Descargar certificado PDF",
+                    data=pdf,
+                    file_name="vera_approval_certificate.pdf",
+                    mime="application/pdf",
                 )
-            else:
-                st.success(f"Imagen lista: {uploaded_file.name} · {size_mb:.1f}MB")
 
-        submitted = st.form_submit_button("Generar link de aprobación")
+        return
 
-    if submitted:
-        try:
-            if not project_name.strip():
-                raise ValueError("Añade el nombre del proyecto.")
+    st.info("Revisa la imagen. Si todo está correcto, puedes aprobar esta versión.")
 
-            if not client_name.strip():
-                raise ValueError("Añade el nombre del cliente.")
+    confirmed = st.checkbox("He revisado esta versión y está lista para aprobar.")
 
-            validate_image_file(uploaded_file)
-            clean_email = clean_optional_email(client_email)
+    if confirmed:
+        if st.button("Aprobar esta versión", type="primary", use_container_width=True):
+            try:
+                with st.spinner("Sellando aprobación y generando certificado..."):
+                    approval_result = approve_project(project_id)
 
-            with st.spinner("Generando link de aprobación..."):
-                project_id = create_project(
-                    project_name=project_name.strip(),
-                    client_name=client_name.strip(),
-                    client_email=clean_email,
-                    uploaded_file=uploaded_file,
-                )
+                st.success("Versión aprobada.")
+                st.balloons()
 
-                approval_link = build_approval_link(project_id)
+                st.markdown("### Sello digital")
+                st.code(approval_result["approval_hash"])
 
-                email_status = send_client_email(
-                    client_email=clean_email,
-                    approval_link=approval_link,
-                    project_name=project_name.strip(),
-                )
+                pdf_path = approval_result.get("pdf_path") or approval_result.get("certificate_path")
 
-            st.session_state.last_approval_link = approval_link
-            st.session_state.last_project_name = project_name.strip()
-            st.session_state.last_email_status = email_status
+                if pdf_path and Path(pdf_path).exists():
+                    with open(pdf_path, "rb") as pdf:
+                        st.download_button(
+                            "Descargar certificado PDF",
+                            data=pdf,
+                            file_name="vera_approval_certificate.pdf",
+                            mime="application/pdf",
+                        )
 
-        except ValueError as error:
-            st.warning(str(error))
-
-        except Exception as error:
-            st.error("Vera no pudo completar la acción.")
-            st.caption(str(error))
-
-    if st.session_state.last_approval_link:
-        st.success("Todo listo. Comparte este enlace con tu cliente.")
-
-        st.markdown("### Link privado")
-        st.code(st.session_state.last_approval_link)
-
-        st.link_button(
-            "Abrir vista cliente",
-            st.session_state.last_approval_link,
-        )
-
-        email_status = st.session_state.last_email_status
-
-        if email_status and email_status.get("sent"):
-            st.info("Email preparado correctamente.")
-        else:
-            st.info("Puedes copiar el enlace y enviarlo cuando quieras.")
+            except Exception as error:
+                st.error("Vera no pudo completar la aprobación.")
+                st.caption(str(error))
