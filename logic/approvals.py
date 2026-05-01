@@ -98,8 +98,8 @@ def create_project(
 # -----------------------------
 
 def build_approval_link(project_id: str) -> str:
-    base = _get_base_url()
-    return f"{base}?project_id={project_id}"
+    base_url = st.secrets.get("APP_BASE_URL", "http://localhost:8501")
+    return f"{base_url}/?project_id={project_id}"
 
 
 # -----------------------------
