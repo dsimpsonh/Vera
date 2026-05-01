@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vera — Pitch Deck</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    :root {
+      --primary: #1B1A17;
+      --secondary: #A2A98F;
+      --accent: #D9573D;
+      --bg: #F5EFE6;
+      --surface: #EFE7DA;
+      --text: #1B1A17;
+      --muted: rgba(27, 26, 23, 0.64);
+      --line: rgba(27, 26, 23, 0.18);
+      --white: #fffaf2;
+      --header: 'Fraunces', serif;
+      --body: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      overflow: hidden;
+    }
+
+    body.overview {
+      overflow: auto;
+    }
+
+    .deck {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .slide {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      padding: 5.4vw 6.4vw;
+      position: relative;
+      background:
+        radial-gradient(circle at 92% 8%, rgba(217,87,61,0.08), transparent 24%),
+        linear-gradient(180deg, var(--bg), var(--surface));
+      overflow: hidden;
+    }
+
+    .slide.active { display: grid; }
+
+    .slide-inner {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 5vw;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+    }
+
+    .kicker {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 26px;
+    }
+
+    h1 {
+      font-family: var(--header);
+      font-weight: 600;
+      font-size: clamp(54px, 7vw, 112px);
+      line-height: 0.93;
+      letter-spacing: -0.055em;
+      margin: 0 0 28px;
+      max-width: 10ch;
+    }
+
+    .body {
+      font-size: clamp(32px, 3vw, 48px);
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+      max-width: 17ch;
+      margin: 0;
+    }
+
+    .small {
+      font-size: clamp(20px, 1.55vw, 30px);
+      line-height: 1.25;
+      color: var(--muted);
+      max-width: 30ch;
+      margin-top: 24px;
+    }
+
+    .visual {
+      min-height: 62vh;
+      border: 1px solid var(--line);
+      background: rgba(255, 250, 242, 0.52);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 42px;
+    }
+
+    .visual.no-border {
+      border: 0;
+      background: transparent;
+    }
+
+    .logo svg {
+      width: min(36vw, 390px);
+      height: auto;
+      display: block;
+    }
+
+    .big-number {
+      font-family: var(--header);
+      font-size: clamp(130px, 21vw, 310px);
+      line-height: 0.75;
+      letter-spacing: -0.08em;
+      color: var(--primary);
+    }
+
+    .unit {
+      position: absolute;
+      right: 44px;
+      bottom: 40px;
+      font-family: var(--mono);
+      font-size: 20px;
+      color: var(--accent);
+    }
+
+    .quote-card {
+      border-left: 6px solid var(--accent);
+      padding: 24px 30px;
+      background: var(--white);
+      width: 100%;
+    }
+
+    .quote {
+      font-family: var(--header);
+      font-size: clamp(36px, 4.2vw, 64px);
+      line-height: 1;
+      letter-spacing: -0.045em;
+      margin: 0;
+    }
+
+    .byline {
+      font-family: var(--mono);
+      font-size: 16px;
+      color: var(--muted);
+      margin-top: 26px;
+    }
+
+    .portrait {
+      width: min(34vw, 430px);
+      aspect-ratio: 4 / 5;
+      border: 1px solid var(--primary);
+      background:
+        linear-gradient(135deg, rgba(162,169,143,0.28), transparent 50%),
+        var(--white);
+      position: relative;
+    }
+
+    .portrait:before {
+      content: "S";
+      font-family: var(--header);
+      font-size: 220px;
+      line-height: 1;
+      position: absolute;
+      left: 42px;
+      top: 40px;
+      color: var(--primary);
+    }
+
+    .portrait:after {
+      content: "Sofía Martínez · 29 · Madrid";
+      font-family: var(--mono);
+      font-size: 18px;
+      position: absolute;
+      left: 42px;
+      bottom: 42px;
+      color: var(--accent);
+    }
+
+    .browser {
+      width: min(46vw, 720px);
+      aspect-ratio: 16 / 10;
+      border: 1px solid var(--primary);
+      background: var(--white);
+      overflow: hidden;
+      box-shadow: 18px 18px 0 var(--secondary);
+    }
+
+    .bar {
+      height: 38px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 0 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .app-shot {
+      height: calc(100% - 38px);
+      padding: 34px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .app-panel {
+      border: 1px solid var(--line);
+      height: 100%;
+      padding: 22px;
+      background: var(--bg);
+    }
+
+    .app-title {
+      font-family: var(--header);
+      font-size: 42px;
+      letter-spacing: -0.05em;
+      margin-bottom: 16px;
+    }
+
+    .app-line {
+      height: 12px;
+      background: var(--line);
+      margin: 12px 0;
+      width: 80%;
+    }
+
+    .app-image {
+      height: 100%;
+      border: 1px solid var(--primary);
+      background:
+        linear-gradient(135deg, transparent 35%, rgba(217,87,61,0.22)),
+        linear-gradient(45deg, rgba(162,169,143,0.4), transparent 50%),
+        var(--white);
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: var(--white);
+    }
+
+    .timeline {
+      width: 100%;
+      display: grid;
+      gap: 22px;
+    }
+
+    .milestone {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 28px;
+      align-items: baseline;
+      padding: 22px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .date {
+      font-family: var(--mono);
+      color: var(--accent);
+      font-size: 17px;
+    }
+
+    .event {
+      font-size: clamp(28px, 2.4vw, 40px);
+      letter-spacing: -0.035em;
+    }
+
+    .price {
+      font-family: var(--header);
+      font-size: clamp(110px, 15vw, 230px);
+      letter-spacing: -0.08em;
+      line-height: 0.85;
+    }
+
+    .price span {
+      font-family: var(--mono);
+      font-size: 24px;
+      letter-spacing: 0;
+      color: var(--accent);
+    }
+
+    .ask-card {
+      width: 100%;
+      padding: 42px;
+      border: 1px solid var(--primary);
+      background: var(--white);
+    }
+
+    .ask-card .ask-number {
+      font-family: var(--header);
+      font-size: 190px;
+      line-height: 0.75;
+      letter-spacing: -0.08em;
+      color: var(--accent);
+    }
+
+    .contact {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 17px;
+      margin-top: 32px;
+      line-height: 1.7;
+    }
+
+    .footer {
+      position: absolute;
+      left: 6.4vw;
+      right: 6.4vw;
+      bottom: 3.3vw;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .progress {
+      height: 1px;
+      background: var(--primary);
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 0%;
+      z-index: 20;
+      transition: width 180ms ease;
+    }
+
+    .notes {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      width: min(520px, calc(100vw - 40px));
+      max-height: 36vh;
+      overflow: auto;
+      background: var(--primary);
+      color: var(--bg);
+      padding: 18px 20px;
+      font-family: var(--body);
+      font-size: 16px;
+      line-height: 1.45;
+      display: none;
+      z-index: 30;
+    }
+
+    .notes.visible { display: block; }
+
+    body.overview .deck {
+      height: auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      padding: 18px;
+    }
+
+    body.overview .slide {
+      display: grid;
+      position: relative;
+      width: 100%;
+      height: 32vh;
+      padding: 24px;
+      border: 1px solid var(--line);
+      cursor: pointer;
+    }
+
+    body.overview .slide-inner {
+      gap: 18px;
+      grid-template-columns: 1fr 0.7fr;
+    }
+
+    body.overview h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    body.overview .body,
+    body.overview .small {
+      font-size: 14px;
+    }
+
+    body.overview .visual {
+      min-height: auto;
+      padding: 12px;
+    }
+
+    body.overview .footer,
+    body.overview .progress,
+    body.overview .notes {
+      display: none;
+    }
+
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+
+      html, body {
+        overflow: visible;
+        background: var(--bg);
+      }
+
+      .deck {
+        width: auto;
+        height: auto;
+      }
+
+      .slide {
+        display: grid !important;
+        width: 297mm;
+        height: 210mm;
+        page-break-after: always;
+        break-after: page;
+        padding: 20mm 24mm;
+      }
+
+      .progress, .notes { display: none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="deck" id="deck">
+    <section class="slide active" data-notes="Vera nace de un momento muy concreto: cuando una ilustración ya fue enviada, pero la aprobación todavía no existe. Ahí se pierden horas, energía y facturas. Siguiente: el coste real.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">01 · Hook</div>
+          <h1>Ocho horas que bloquean facturas</h1>
+          <p class="body">La revisión enviada todavía no es una aprobación.</p>
+          <p class="small">Vera existe para cerrar ese espacio.</p>
+        </div>
+        <div class="visual no-border logo" aria-label="Logo Vera">
+          <svg viewBox="0 0 160 160" role="img" aria-label="Vera logo">
+            <rect width="160" height="160" fill="transparent"/>
+            <path d="M35 34 C46 78, 57 112, 71 130 C86 102, 105 64, 126 28" fill="none" stroke="#1B1A17" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M46 38 C58 76, 64 96, 74 119" fill="none" stroke="#1B1A17" stroke-width="3" stroke-linecap="round" opacity="0.45"/>
+            <circle cx="121" cy="28" r="9" fill="#D9573D"/>
+          </svg>
+        </div>
+      </div>
+      <div class="footer"><span>Vera</span><span>01 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="Ilustradoras freelance pierden 8 horas por semana en admin de revisiones. CITA — “Es lo que cierra el loop para que pueda facturar.” — Tomás, ilustrador freelance, Madrid. Siguiente: quién vive esto.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">02 · Problem</div>
+          <h1>La revisión cuesta tiempo y dinero</h1>
+          <p class="body">Ilustradoras freelance pierden 8h/sem en admin de revisiones.</p>
+          <p class="small">“Es lo que cierra el loop para que pueda facturar.” — Tomás</p>
+        </div>
+        <div class="visual">
+          <div class="big-number">8h</div>
+          <div class="unit">por semana</div>
+        </div>
+      </div>
+      <div class="footer"><span>Problema</span><span>02 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="La usuaria es Sofía Martínez: 29, Madrid, ilustradora freelance, parte de más de 200,000 ilustradoras en UK, EU y US. No necesita otra herramienta compleja; necesita cerrar una aprobación. Siguiente: el insight.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">03 · Who</div>
+          <h1>Sofía conoce este dolor</h1>
+          <p class="body">Sofía Martínez · 29 · Madrid.</p>
+          <p class="small">Parte de más de 200,000+ ilustradoras UK/EU/US.</p>
+        </div>
+        <div class="visual no-border">
+          <div class="portrait" aria-label="Retrato editorial de Sofía Martínez"></div>
+        </div>
+      </div>
+      <div class="footer"><span>Usuario</span><span>03 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="En las conversaciones, 5 de 5 no dijeron “trackear aprobaciones”; dijeron “cobrar más rápido”. El producto cambió de tracker a cierre de loop para facturar. Siguiente: la solución.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">04 · Insight</div>
+          <h1>El job real es cobrar antes</h1>
+          <p class="body">“Cobrar más rápido” fue descrito por 5 de 5.</p>
+          <p class="small">No es tracking. Es cierre para facturar.</p>
+        </div>
+        <div class="visual">
+          <div class="quote-card">
+            <p class="quote">“Cobrar más rápido”</p>
+            <div class="byline">descrito por 5 de 5</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Insight</span><span>04 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="Vera permite subir una versión, compartir un link privado y recibir aprobación con fecha, hash y PDF. El precio validado es £15/mes por ilustradora, plan solo. Siguiente: la demo.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">05 · Solution</div>
+          <h1>Vera convierte revisión en aprobación</h1>
+          <p class="body">Sube una versión. Comparte un link. Recibe un PDF firmado.</p>
+          <p class="small">Demo: https://vera-sofia.streamlit.app</p>
+        </div>
+        <div class="visual">
+          <div class="browser">
+            <div class="bar"><span class="dot"></span><span>vera-sofia.streamlit.app</span></div>
+            <div class="app-shot">
+              <div class="app-panel">
+                <div class="app-title">Vera</div>
+                <div class="app-line"></div>
+                <div class="app-line" style="width:60%"></div>
+                <div class="app-line" style="width:72%"></div>
+              </div>
+              <div class="app-image"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Producto</span><span>05 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="El MVP ya está en vivo en https://vera-sofia.streamlit.app. El cliente vuelve a ver el archivo antes de aprobar, porque la confianza bloqueaba el clic. Siguiente: por qué ahora.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">06 · Demo</div>
+          <h1>El MVP ya está vivo</h1>
+          <p class="body">El cliente revisa el archivo antes de aprobar.</p>
+          <p class="small">https://vera-sofia.streamlit.app</p>
+        </div>
+        <div class="visual">
+          <iframe src="https://vera-sofia.streamlit.app" title="Vera MVP demo"></iframe>
+        </div>
+      </div>
+      <div class="footer"><span>Demo</span><span>06 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="Streamlit + SQLite + ReportLab + LLM permiten mandar en días, no cuartos. Ese cambio hace posible validar con clientes reales antes de construir de más. Siguiente: por qué Sofía.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">07 · Why now</div>
+          <h1>Días, no cuartos</h1>
+          <p class="body">Streamlit + LLM = se manda en días.</p>
+          <p class="small">SQLite y ReportLab sostienen el trail firmado.</p>
+        </div>
+        <div class="visual">
+          <div class="big-number">6</div>
+          <div class="unit">días para armar Vera</div>
+        </div>
+      </div>
+      <div class="footer"><span>Ahora</span><span>07 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="Sofía tiene 5 años de ilustración freelance y perdió esas mismas 8 horas por semana. Vera fue construida en 6 días desde una herida operativa real. Siguiente: los números.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">08 · Why you</div>
+          <h1>Construida desde el problema</h1>
+          <p class="body">5 años ilustración freelance · perdí 8h/sem.</p>
+          <p class="small">Armé Vera en 6 días.</p>
+        </div>
+        <div class="visual">
+          <div class="quote-card">
+            <p class="quote">“Hecho por una ilustradora que perdió las 8 horas.”</p>
+            <div class="byline">Sofía Martínez</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Founder</span><span>08 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="Habló con 5 ilustradoras freelance: 3 Madrid y 2 Londres. 3 de 5 comprometieron dinero vía Venmo a £15/mes. Siguiente: el plan.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">09 · Numbers</div>
+          <h1>Cinco entrevistas, tres pagos</h1>
+          <p class="body">5 ilustradoras freelance consultadas.</p>
+          <p class="small">3 de 5 comprometieron dinero vía Venmo a £15/mes.</p>
+        </div>
+        <div class="visual">
+          <div class="price">£15<span>/mes</span></div>
+        </div>
+      </div>
+      <div class="footer"><span>Números</span><span>09 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="v0.2 fue mandada el 18 May, v0.3 está planeada para el 30 May y v1.0 apunta al 30 Jun. El camino es corto y enfocado en aprobación, evidencia y factura. Siguiente: la petición.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">10 · Roadmap</div>
+          <h1>De v0.2 a v1.0</h1>
+          <p class="body">Tres fechas. Un foco: cerrar el loop.</p>
+        </div>
+        <div class="visual">
+          <div class="timeline">
+            <div class="milestone"><div class="date">18 May</div><div class="event">v0.2 mandada</div></div>
+            <div class="milestone"><div class="date">30 May</div><div class="event">v0.3 plan</div></div>
+            <div class="milestone"><div class="date">30 Jun</div><div class="event">v1.0 target</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Roadmap</span><span>10 / 11</span></div>
+    </section>
+
+    <section class="slide" data-notes="La petición es específica: 5 ilustradoras dispuestas a usar Vera con su cliente del mes. Si conoces a una, preséntamela hoy: sofia@vera.studio. Cierro aquí.">
+      <div class="slide-inner">
+        <div>
+          <div class="kicker">11 · Ask</div>
+          <h1>Busco cinco ilustradoras beta</h1>
+          <p class="body">5 ilustradoras dispuestas a usar Vera con su cliente del mes.</p>
+          <p class="small">Sofía Martínez · 5 años ilustración freelance</p>
+        </div>
+        <div class="visual">
+          <div class="ask-card">
+            <div class="ask-number">5</div>
+            <p class="body">clientes del mes</p>
+            <div class="contact">
+              sofia@vera.studio<br/>
+              @sofiavera<br/>
+              vera-sofia.streamlit.app
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><span>Ask</span><span>11 / 11</span></div>
+    </section>
+  </main>
+
+  <div class="progress" id="progress"></div>
+  <aside class="notes" id="notes"></aside>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const progress = document.getElementById('progress');
+    const notes = document.getElementById('notes');
+    let index = 0;
+    let notesVisible = false;
+
+    function showSlide(i) {
+      index = Math.max(0, Math.min(slides.length - 1, i));
+      slides.forEach((slide, n) => slide.classList.toggle('active', n === index));
+      progress.style.width = ((index + 1) / slides.length * 100) + '%';
+      notes.textContent = slides[index].dataset.notes || '';
+      if (!document.body.classList.contains('overview')) {
+        slides[index].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function next() { showSlide(index + 1); }
+    function prev() { showSlide(index - 1); }
+
+    function toggleOverview() {
+      document.body.classList.toggle('overview');
+      if (!document.body.classList.contains('overview')) showSlide(index);
+    }
+
+    function toggleNotes() {
+      notesVisible = !notesVisible;
+      notes.classList.toggle('visible', notesVisible);
+      notes.textContent = slides[index].dataset.notes || '';
+    }
+
+    document.addEventListener('keydown', (event) => {
+      const key = event.key;
+      if (key === 'ArrowRight' || key === 'ArrowDown' || key === 'PageDown' || key === ' ') next();
+      if (key === 'ArrowLeft' || key === 'ArrowUp' || key === 'PageUp') prev();
+      if (key === 'Escape') toggleOverview();
+      if (key.toLowerCase() === 'n') toggleNotes();
+    });
+
+    slides.forEach((slide, n) => {
+      slide.addEventListener('click', () => {
+        if (document.body.classList.contains('overview')) {
+          document.body.classList.remove('overview');
+          showSlide(n);
+        }
+      });
+    });
+
+    showSlide(0);
+  </script>
+</body>
+</html>
