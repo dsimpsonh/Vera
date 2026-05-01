@@ -1,36 +1,40 @@
-import streamlit as st
-import sqlite3
 import hashlib
+import sqlite3
 import uuid
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import streamlit as st
 from PIL import Image
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
-# --------------------------------------------------
+
+# -----------------------------
 # CONFIG
-# --------------------------------------------------
+# -----------------------------
 
 st.set_page_config(
     page_title="Vera — Approval Tracker",
     page_icon="V",
-    layout="wide"
+    layout="wide",
 )
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
-APPROVAL_DIR = DATA_DIR / "approvals"
+CERT_DIR = DATA_DIR / "certificates"
 DB_PATH = DATA_DIR / "vera.db"
 
-for folder in [DATA_DIR, UPLOAD_DIR, APPROVAL_DIR]:
-    folder.mkdir(parents=True, exist_ok=True)
+MAX_FILE_MB = 10
+
+for path in [DATA_DIR, UPLOAD_DIR, CERT_DIR]:
+    path.mkdir(parents=True, exist_ok=True)
 
 
-# --------------------------------------------------
+# -----------------------------
 # STYLE
-# --------------------------------------------------
+# -----------------------------
 
 st.markdown(
     """
@@ -39,28 +43,27 @@ st.markdown(
 
     .stApp {
         background: #FDFCFB;
-        color: #191919;
+        color: #181818;
     }
 
     h1, h2, h3 {
         font-family: 'Playfair Display', serif;
     }
 
-    p, label, div, button, input, textarea {
+    p, div, label, input, textarea, button {
         font-family: 'Space Mono', monospace;
     }
 
     .vera-card {
-        background: white;
-        border: 1px solid #191919;
+        background: #FFFFFF;
+        border: 1px solid #181818;
         padding: 2rem;
-        border-radius: 4px;
-        margin-bottom: 1rem;
+        margin: 1rem 0;
     }
 
     .seal {
-        border: 3px solid #191919;
-        background: #ffffff;
+        border: 3px solid #181818;
+        background: #FFFFFF;
         padding: 2rem;
         text-align: center;
         margin-top: 2rem;
@@ -71,42 +74,22 @@ st.markdown(
         font-size: 2.4rem;
         letter-spacing: 0.12em;
     }
-
-    .small {
-        font-size: 0.85rem;
-        opacity: 0.75;
-    }
-
-    div.stButton > button {
-        border: 2px solid #191919;
-        background: white;
-        color: #191919;
-        border-radius: 0;
-        padding: 0.8rem 1.2rem;
-        font-weight: 700;
-    }
-
-    div.stButton > button:hover {
-        background: #191919;
-        color: white;
-        border: 2px solid #191919;
-    }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
-# --------------------------------------------------
-# DATABASE
-# --------------------------------------------------
+# -----------------------------
+# DB
+# -----------------------------
 
-def get_conn():
+def db():
     return sqlite3.connect(DB_PATH)
 
 
 def init_db():
-    with get_conn() as conn:
+    with db() as conn:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS projects (
@@ -141,8 +124,7 @@ def init_db():
                 version_id TEXT NOT NULL,
                 approved_at TEXT NOT NULL,
                 approval_hash TEXT NOT NULL,
-                client_name TEXT NOT NULL,
-                pdf_path TEXT,
+                certificate_path TEXT NOT NULL,
                 FOREIGN KEY(project_id) REFERENCES projects(id),
                 FOREIGN KEY(version_id) REFERENCES versions(id)
             )
@@ -153,93 +135,85 @@ def init_db():
 init_db()
 
 
-# --------------------------------------------------
+# -----------------------------
 # HELPERS
-# --------------------------------------------------
+# -----------------------------
 
-def now_iso():
+def now():
     return datetime.now().isoformat(timespec="seconds")
 
 
-def make_id(prefix):
-    return f"{prefix}_{uuid.uuid4().hex[:12]}"
+def new_id(prefix):
+    return f"{prefix}_{uuid.uuid4().hex[:10]}"
 
 
-def make_hash(*parts):
-    raw = "|".join(str(p) for p in parts)
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest().upper()
+def clean_optional_email(email):
+    if email is None or email.strip() == "":
+        return None
+
+    email = email.strip()
+
+    if "@" not in email or "." not in email:
+        raise ValueError("El email no parece válido. Corrígelo o deja el campo vacío.")
+
+    return email
 
 
-def save_compressed_image(uploaded_file, project_id, version_id):
+def validate_file(uploaded_file):
+    if uploaded_file is None:
+        raise ValueError("Sube una imagen antes de continuar.")
+
+    size_mb = uploaded_file.size / (1024 * 1024)
+
+    if size_mb > MAX_FILE_MB:
+        raise ValueError(f"La imagen pesa {size_mb:.1f}MB. Máximo permitido: {MAX_FILE_MB}MB.")
+
+
+def save_image(uploaded_file, project_id, version_id):
     image = Image.open(uploaded_file).convert("RGB")
 
     max_width = 1600
     if image.width > max_width:
         ratio = max_width / image.width
-        new_size = (max_width, int(image.height * ratio))
-        image = image.resize(new_size)
+        image = image.resize((max_width, int(image.height * ratio)))
 
-    path = UPLOAD_DIR / f"{project_id}_{version_id}.jpg"
-    image.save(path, format="JPEG", quality=82, optimize=True)
+    image_path = UPLOAD_DIR / f"{project_id}_{version_id}.jpg"
+    image.save(image_path, "JPEG", quality=82, optimize=True)
 
-    return str(path)
-
-
-def create_approval_pdf(project, version, approval_hash, approved_at):
-    pdf_id = make_id("pdf")
-    pdf_path = APPROVAL_DIR / f"{pdf_id}.pdf"
-
-    c = canvas.Canvas(str(pdf_path), pagesize=A4)
-    width, height = A4
-
-    c.setFont("Helvetica-Bold", 24)
-    c.drawString(72, height - 90, "Vera Approval Certificate")
-
-    c.setFont("Helvetica", 12)
-    c.drawString(72, height - 130, f"Project: {project['project_name']}")
-    c.drawString(72, height - 155, f"Client: {project['client_name']}")
-    c.drawString(72, height - 180, f"Version: {version['version_number']}")
-    c.drawString(72, height - 205, f"Approved at: {approved_at}")
-    c.drawString(72, height - 230, f"Approval hash: {approval_hash}")
-
-    c.line(72, height - 270, width - 72, height - 270)
-
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(72, height - 315, "APPROVED")
-
-    c.setFont("Helvetica", 10)
-    c.drawString(
-        72,
-        72,
-        "Generated by Vera. This MVP certificate records a timestamped approval trail."
-    )
-
-    c.save()
-    return str(pdf_path)
+    return str(image_path)
 
 
-def get_base_url():
+def make_hash(project_id, version_id, approved_at):
+    raw = f"{project_id}|{version_id}|{approved_at}|vera"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest().upper()[:24]
+
+
+def base_url():
     return st.query_params.get("base_url", "http://localhost:8501")
 
 
-# --------------------------------------------------
-# DB OPERATIONS
-# --------------------------------------------------
+def build_link(project_id):
+    return f"{base_url()}?project_id={project_id}"
+
+
+# -----------------------------
+# REPOSITORY
+# -----------------------------
 
 def create_project(project_name, client_name, client_email, uploaded_file, note):
-    project_id = make_id("project")
-    version_id = make_id("version")
-    created_at = now_iso()
+    project_id = new_id("project")
+    version_id = new_id("version")
+    created_at = now()
 
-    image_path = save_compressed_image(uploaded_file, project_id, version_id)
+    image_path = save_image(uploaded_file, project_id, version_id)
 
-    with get_conn() as conn:
+    with db() as conn:
         conn.execute(
             """
             INSERT INTO projects (id, project_name, client_name, client_email, created_at)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (project_id, project_name, client_name, client_email, created_at)
+            (project_id, project_name, client_name, client_email, created_at),
         )
 
         conn.execute(
@@ -247,41 +221,41 @@ def create_project(project_name, client_name, client_email, uploaded_file, note)
             INSERT INTO versions (id, project_id, version_number, image_path, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (version_id, project_id, 1, image_path, note, created_at)
+            (version_id, project_id, 1, image_path, note, created_at),
         )
 
     return project_id
 
 
 def add_version(project_id, uploaded_file, note):
-    version_id = make_id("version")
-    created_at = now_iso()
+    version_id = new_id("version")
+    created_at = now()
 
-    with get_conn() as conn:
-        row = conn.execute(
+    with db() as conn:
+        latest = conn.execute(
             "SELECT COALESCE(MAX(version_number), 0) FROM versions WHERE project_id = ?",
-            (project_id,)
-        ).fetchone()
+            (project_id,),
+        ).fetchone()[0]
 
-        next_version = row[0] + 1
-        image_path = save_compressed_image(uploaded_file, project_id, version_id)
+        version_number = latest + 1
+        image_path = save_image(uploaded_file, project_id, version_id)
 
         conn.execute(
             """
             INSERT INTO versions (id, project_id, version_number, image_path, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (version_id, project_id, next_version, image_path, note, created_at)
+            (version_id, project_id, version_number, image_path, note, created_at),
         )
 
 
 def get_project(project_id):
-    with get_conn() as conn:
+    with db() as conn:
         conn.row_factory = sqlite3.Row
 
         project = conn.execute(
             "SELECT * FROM projects WHERE id = ?",
-            (project_id,)
+            (project_id,),
         ).fetchone()
 
         if not project:
@@ -293,7 +267,7 @@ def get_project(project_id):
             WHERE project_id = ?
             ORDER BY version_number DESC
             """,
-            (project_id,)
+            (project_id,),
         ).fetchall()
 
         approval = conn.execute(
@@ -303,24 +277,25 @@ def get_project(project_id):
             ORDER BY approved_at DESC
             LIMIT 1
             """,
-            (project_id,)
+            (project_id,),
         ).fetchone()
 
     return {
         "project": dict(project),
         "versions": [dict(v) for v in versions],
-        "approval": dict(approval) if approval else None
+        "approval": dict(approval) if approval else None,
     }
 
 
 def list_projects():
-    with get_conn() as conn:
+    with db() as conn:
         conn.row_factory = sqlite3.Row
+
         rows = conn.execute(
             """
             SELECT p.*,
-                   COUNT(v.id) as version_count,
-                   MAX(v.created_at) as last_updated
+                   COUNT(v.id) AS version_count,
+                   MAX(v.created_at) AS last_updated
             FROM projects p
             LEFT JOIN versions v ON p.id = v.project_id
             GROUP BY p.id
@@ -331,33 +306,58 @@ def list_projects():
     return [dict(row) for row in rows]
 
 
-def approve_version(project, version):
-    approved_at = now_iso()
-    approval_id = make_id("approval")
+# -----------------------------
+# PDF
+# -----------------------------
 
-    approval_hash = make_hash(
-        project["id"],
-        version["id"],
-        version["version_number"],
-        approved_at,
-        project["client_name"]
-    )
+def generate_certificate(project, version, approval_hash, approved_at):
+    certificate_path = CERT_DIR / f"certificate_{project['id']}_{version['id']}.pdf"
 
-    pdf_path = create_approval_pdf(
+    c = canvas.Canvas(str(certificate_path), pagesize=A4)
+    width, height = A4
+
+    c.setFont("Helvetica-Bold", 24)
+    c.drawString(72, height - 90, "Vera Approval Certificate")
+
+    c.setFont("Helvetica", 12)
+    c.drawString(72, height - 140, f"Project: {project['project_name']}")
+    c.drawString(72, height - 165, f"Client: {project['client_name']}")
+    c.drawString(72, height - 190, f"Version: V{version['version_number']}")
+    c.drawString(72, height - 215, f"Approved at: {approved_at}")
+    c.drawString(72, height - 240, f"Approval hash: {approval_hash}")
+
+    c.line(72, height - 280, width - 72, height - 280)
+
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(72, height - 325, "STATUS: APPROVED")
+
+    c.setFont("Helvetica", 9)
+    c.drawString(72, 72, "Generated by Vera MVP.")
+
+    c.save()
+
+    return str(certificate_path)
+
+
+def approve_latest(project, version):
+    approved_at = now()
+    approval_id = new_id("approval")
+    approval_hash = make_hash(project["id"], version["id"], approved_at)
+
+    certificate_path = generate_certificate(
         project=project,
         version=version,
         approval_hash=approval_hash,
-        approved_at=approved_at
+        approved_at=approved_at,
     )
 
-    with get_conn() as conn:
+    with db() as conn:
         conn.execute(
             """
             INSERT INTO approvals (
-                id, project_id, version_id, approved_at,
-                approval_hash, client_name, pdf_path
+                id, project_id, version_id, approved_at, approval_hash, certificate_path
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 approval_id,
@@ -365,32 +365,119 @@ def approve_version(project, version):
                 version["id"],
                 approved_at,
                 approval_hash,
-                project["client_name"],
-                pdf_path
-            )
+                certificate_path,
+            ),
         )
 
-    return approval_hash, approved_at, pdf_path
+    return {
+        "approved_at": approved_at,
+        "approval_hash": approval_hash,
+        "certificate_path": certificate_path,
+    }
 
 
-# --------------------------------------------------
-# ROUTING
-# --------------------------------------------------
+# -----------------------------
+# VIEWS
+# -----------------------------
 
-project_id = st.query_params.get("project_id")
-view = st.query_params.get("view", "studio")
+def render_studio():
+    st.title("Vera — approval tracker")
+    st.write("Manda una revisión. Recibe un trail firmado.")
+
+    tab_create, tab_history = st.tabs(["Nuevo envío", "Historial"])
+
+    with tab_create:
+        with st.form("create_project_form", clear_on_submit=False):
+            project_name = st.text_input("Nombre del proyecto")
+            client_name = st.text_input("Nombre del cliente")
+            client_email = st.text_input("Email del cliente opcional")
+            note = st.text_area("Nota de la versión")
+            uploaded_file = st.file_uploader(
+                "Sube la ilustración",
+                type=["png", "jpg", "jpeg", "webp"],
+                help=f"Máximo {MAX_FILE_MB}MB",
+            )
+
+            if uploaded_file:
+                size_mb = uploaded_file.size / (1024 * 1024)
+                if size_mb > MAX_FILE_MB:
+                    st.error(f"Archivo demasiado grande: {size_mb:.1f}MB.")
+                else:
+                    st.success(f"Imagen lista: {uploaded_file.name} · {size_mb:.1f}MB")
+
+            submitted = st.form_submit_button("Generar link de aprobación")
+
+        if submitted:
+            try:
+                if not project_name.strip():
+                    raise ValueError("Añade el nombre del proyecto.")
+
+                if not client_name.strip():
+                    raise ValueError("Añade el nombre del cliente.")
+
+                validate_file(uploaded_file)
+                clean_email = clean_optional_email(client_email)
+
+                with st.spinner("Creando proyecto y generando link..."):
+                    project_id = create_project(
+                        project_name=project_name.strip(),
+                        client_name=client_name.strip(),
+                        client_email=clean_email,
+                        uploaded_file=uploaded_file,
+                        note=note.strip(),
+                    )
+
+                link = build_link(project_id)
+
+                st.success("Proyecto creado. Link privado listo.")
+                st.code(link)
+                st.link_button("Abrir vista cliente", link)
+
+            except ValueError as error:
+                st.warning(str(error))
+            except Exception as error:
+                st.error("Vera no pudo completar la acción.")
+                st.caption(str(error))
+
+    with tab_history:
+        projects = list_projects()
+
+        if not projects:
+            st.info("Aún no hay proyectos.")
+            return
+
+        for project in projects:
+            with st.expander(f"{project['project_name']} — {project['client_name']}"):
+                st.write(f"Creado: {project['created_at']}")
+                st.write(f"Versiones: {project['version_count']}")
+                st.code(build_link(project["id"]))
+
+                with st.form(f"version_form_{project['id']}", clear_on_submit=True):
+                    version_note = st.text_area("Nota para nueva versión")
+                    new_file = st.file_uploader(
+                        "Subir nueva versión",
+                        type=["png", "jpg", "jpeg", "webp"],
+                        key=f"file_{project['id']}",
+                    )
+                    add_submitted = st.form_submit_button("Añadir versión")
+
+                if add_submitted:
+                    try:
+                        validate_file(new_file)
+                        with st.spinner("Guardando nueva versión..."):
+                            add_version(project["id"], new_file, version_note.strip())
+                        st.success("Nueva versión añadida.")
+                        st.rerun()
+                    except ValueError as error:
+                        st.warning(str(error))
 
 
-# --------------------------------------------------
-# CLIENT VIEW
-# --------------------------------------------------
-
-def render_client_view(project_id):
+def render_client(project_id):
     data = get_project(project_id)
 
-    if not data:
+    if data is None:
         st.error("Proyecto no encontrado.")
-        st.stop()
+        return
 
     project = data["project"]
     versions = data["versions"]
@@ -398,7 +485,7 @@ def render_client_view(project_id):
     latest_version = versions[0]
 
     st.title("Vera")
-    st.markdown("### Revisión privada para aprobación")
+    st.write("Revisión privada para aprobación.")
 
     st.markdown('<div class="vera-card">', unsafe_allow_html=True)
     st.subheader(project["project_name"])
@@ -406,13 +493,13 @@ def render_client_view(project_id):
     st.write(f"Versión actual: V{latest_version['version_number']}")
 
     if latest_version["note"]:
-        st.write(f"Nota de la ilustradora: {latest_version['note']}")
+        st.write(f"Nota: {latest_version['note']}")
 
     st.image(latest_version["image_path"], use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     if approval:
-        st.success("Esta versión ya tiene una aprobación registrada.")
+        st.success("Este proyecto ya tiene una aprobación registrada.")
 
         st.markdown(
             f"""
@@ -422,137 +509,58 @@ def render_client_view(project_id):
                 <p>Hash: {approval["approval_hash"]}</p>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
-        if approval.get("pdf_path") and Path(approval["pdf_path"]).exists():
-            with open(approval["pdf_path"], "rb") as f:
+        if Path(approval["certificate_path"]).exists():
+            with open(approval["certificate_path"], "rb") as pdf:
                 st.download_button(
                     "Descargar certificado PDF",
-                    data=f,
+                    data=pdf,
                     file_name="vera_approval_certificate.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
                 )
-
         return
 
-    st.warning("Revisa la imagen antes de aprobar. Esta acción creará un registro de aprobación.")
+    st.warning("Aprueba solo si esta versión está lista para cerrar.")
 
-    confirm = st.checkbox("Confirmo que apruebo esta versión final.")
+    confirmed = st.checkbox("Confirmo que apruebo esta versión.")
 
-    if confirm:
+    if confirmed:
         if st.button("SELLAR Y APROBAR VERSIÓN", use_container_width=True):
-            approval_hash, approved_at, pdf_path = approve_version(project, latest_version)
+            with st.spinner("Sellando aprobación y generando certificado..."):
+                approval_result = approve_latest(project, latest_version)
 
             st.balloons()
-            st.success("Versión aprobada y sellada.")
+            st.success("Versión aprobada.")
 
             st.markdown(
                 f"""
                 <div class="seal">
                     <div class="seal-title">APROBADO</div>
-                    <p>Fecha: {approved_at}</p>
-                    <p>Hash: {approval_hash}</p>
+                    <p>Fecha: {approval_result["approved_at"]}</p>
+                    <p>Hash: {approval_result["approval_hash"]}</p>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
-            with open(pdf_path, "rb") as f:
+            with open(approval_result["certificate_path"], "rb") as pdf:
                 st.download_button(
                     "Descargar certificado PDF",
-                    data=f,
+                    data=pdf,
                     file_name="vera_approval_certificate.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
                 )
 
 
-# --------------------------------------------------
-# STUDIO VIEW
-# --------------------------------------------------
+# -----------------------------
+# ENTRY
+# -----------------------------
 
-def render_studio_view():
-    st.title("Vera — approval tracker")
-    st.write("Manda una revisión. Recibe un trail firmado.")
-
-    tab_new, tab_existing = st.tabs(["Nuevo proyecto", "Proyectos"])
-
-    with tab_new:
-        st.markdown('<div class="vera-card">', unsafe_allow_html=True)
-
-        with st.form("new_project_form"):
-            project_name = st.text_input("Nombre del proyecto")
-            client_name = st.text_input("Cliente")
-            client_email = st.text_input("Email del cliente opcional")
-            note = st.text_area("Nota para esta versión")
-            uploaded_file = st.file_uploader(
-                "Sube la ilustración",
-                type=["png", "jpg", "jpeg", "webp"]
-            )
-
-            submitted = st.form_submit_button("Generar link de aprobación")
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        if submitted:
-            if not project_name or not client_name or not uploaded_file:
-                st.error("Falta nombre del proyecto, cliente o imagen.")
-            else:
-                new_project_id = create_project(
-                    project_name=project_name,
-                    client_name=client_name,
-                    client_email=client_email,
-                    uploaded_file=uploaded_file,
-                    note=note
-                )
-
-                approval_link = f"{get_base_url()}?project_id={new_project_id}"
-
-                st.success("Proyecto creado.")
-                st.write("Link privado de aprobación:")
-                st.code(approval_link)
-
-                st.link_button("Abrir vista cliente", approval_link)
-
-    with tab_existing:
-        projects = list_projects()
-
-        if not projects:
-            st.info("Todavía no hay proyectos.")
-            return
-
-        for project in projects:
-            with st.expander(f"{project['project_name']} — {project['client_name']}"):
-                st.write(f"Creado: {project['created_at']}")
-                st.write(f"Versiones: {project['version_count']}")
-
-                approval_link = f"{get_base_url()}?project_id={project['id']}"
-                st.code(approval_link)
-
-                with st.form(f"add_version_{project['id']}"):
-                    note = st.text_area("Nota de nueva versión")
-                    uploaded_file = st.file_uploader(
-                        "Subir nueva versión",
-                        type=["png", "jpg", "jpeg", "webp"],
-                        key=f"upload_{project['id']}"
-                    )
-
-                    submitted = st.form_submit_button("Añadir versión")
-
-                if submitted:
-                    if not uploaded_file:
-                        st.error("Sube una imagen para crear una nueva versión.")
-                    else:
-                        add_version(project["id"], uploaded_file, note)
-                        st.success("Nueva versión añadida.")
-                        st.rerun()
-
-
-# --------------------------------------------------
-# APP ENTRY
-# --------------------------------------------------
+project_id = st.query_params.get("project_id")
 
 if project_id:
-    render_client_view(project_id)
+    render_client(project_id)
 else:
-    render_studio_view()
+    render_studio()
