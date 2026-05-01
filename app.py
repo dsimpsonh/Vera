@@ -13,6 +13,7 @@ from reportlab.pdfgen import canvas
 # -----------------------------
 # CONFIG
 # -----------------------------
+st.image("vera_logo.png", width=60)
 
 st.set_page_config(
     page_title="Vera — Approval Tracker",
