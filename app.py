@@ -13,7 +13,6 @@ from reportlab.pdfgen import canvas
 # -----------------------------
 # CONFIG
 # -----------------------------
-st.image("vera_logo.png", width=60)
 
 st.set_page_config(
     page_title="Vera — Approval Tracker",
@@ -21,6 +20,7 @@ st.set_page_config(
     layout="wide",
 )
 
+# Paths
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
@@ -32,6 +32,11 @@ MAX_FILE_MB = 10
 for path in [DATA_DIR, UPLOAD_DIR, CERT_DIR]:
     path.mkdir(parents=True, exist_ok=True)
 
+# Logo (DESPUÉS de set_page_config)
+LOGO_PATH = BASE_DIR / "vera_logo.png"
+
+if LOGO_PATH.exists():
+    st.image(str(LOGO_PATH), width=60)
 
 
 
