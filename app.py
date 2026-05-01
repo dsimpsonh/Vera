@@ -32,52 +32,72 @@ for path in [DATA_DIR, UPLOAD_DIR, CERT_DIR]:
     path.mkdir(parents=True, exist_ok=True)
 
 
+
+
+
+
 # -----------------------------
 # STYLE
 # -----------------------------
 
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Space+Mono&display=swap');
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500&display=swap');
 
-    .stApp {
-        background: #FDFCFB;
-        color: #181818;
-    }
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+    background-color: #FDFCF9;
+    color: #1A1A1A;
+}
 
-    h1, h2, h3 {
-        font-family: 'Playfair Display', serif;
-    }
+/* Titles */
+h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+    letter-spacing: -0.5px;
+}
 
-    p, div, label, input, textarea, button {
-        font-family: 'Space Mono', monospace;
-    }
+/* Inputs */
+input, textarea {
+    border: 1px solid #D9D6CF !important;
+    background: #FFFFFF !important;
+}
 
-    .vera-card {
-        background: #FFFFFF;
-        border: 1px solid #181818;
-        padding: 2rem;
-        margin: 1rem 0;
-    }
+/* Buttons */
+div.stButton > button {
+    border: 1px solid #1A1A1A;
+    background: transparent;
+    color: #1A1A1A;
+    padding: 10px 16px;
+    font-weight: 500;
+}
 
-    .seal {
-        border: 3px solid #181818;
-        background: #FFFFFF;
-        padding: 2rem;
-        text-align: center;
-        margin-top: 2rem;
-    }
+div.stButton > button:hover {
+    background: #1A1A1A;
+    color: #FFFFFF;
+}
 
-    .seal-title {
-        font-family: 'Playfair Display', serif;
-        font-size: 2.4rem;
-        letter-spacing: 0.12em;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+/* Accent button (approval) */
+button[kind="primary"] {
+    border: none !important;
+    background-color: #E86C5D !important;
+    color: white !important;
+}
+
+button[kind="primary"]:hover {
+    background-color: #d85c4e !important;
+}
+
+/* Cards */
+.block-container {
+    max-width: 900px;
+}
+
+/* Success */
+.stSuccess {
+    border-left: 3px solid #2F7A65;
+}
+</style>
+""", unsafe_allow_html=True)
 
 
 # -----------------------------
