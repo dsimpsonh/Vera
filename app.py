@@ -126,7 +126,7 @@ button[kind="primary"]:hover {
 
 def render_logo():
     if LOGO_PATH.exists():
-        st.image(str(LOGO_PATH), width=72)
+        st.image(str(LOGO_PATH), width=140)
 
 
 # -----------------------------
